@@ -5,12 +5,14 @@ import * as bcrypt from 'bcryptjs';
 import { User } from './entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { AuthService } from '../auth/auth.service';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly authService: AuthService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -66,11 +68,15 @@ export class UserService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    // Generate JWT token
+    const tokenData = this.authService.generateToken(user.id, user.email);
+
     return {
       id: user.id,
       email: user.email,
       createdAt: user.createdAt,
       message: 'Login successful',
+      ...tokenData,
     };
   }
 
