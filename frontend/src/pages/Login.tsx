@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
-import { Input, Button, Alert } from '@/components';
+import { Button, Alert } from '@/components';
 import { userApi } from '@/api/client';
 
 interface LoginFormInputs {
@@ -35,7 +35,7 @@ export const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await userApi.login(data.email, data.password);
+      await userApi.login(data.email, data.password);
       console.log('[LOGIN] ✅ Login successful');
       
       // Store user email for dashboard
