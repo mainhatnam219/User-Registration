@@ -68,8 +68,8 @@ export class UserService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Generate JWT token
-    const tokenData = this.authService.generateToken(user.id, user.email);
+    // Generate JWT tokens (access + refresh)
+    const tokenData = this.authService.generateTokens(user.id, user.email);
 
     return {
       id: user.id,

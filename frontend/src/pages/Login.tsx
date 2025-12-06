@@ -1,88 +1,60 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import { Input, Button, Alert } from '@/components';
 import { userApi } from '@/api/client';
 
-interface FormData {
+interface LoginFormInputs {
   email: string;
   password: string;
 }
 
-interface FormErrors {
-  email?: string;
-  password?: string;
-}
-
 export const Login: React.FC = () => {
-  const [formData, setFormData] = useState<FormData>({
-    email: '',
-    password: '',
+  const navigate = useNavigate();
+  const [successMessage, setSuccessMessage] = React.useState('');
+  const [errorMessage, setErrorMessage] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<LoginFormInputs>({
+    defaultValues: {
+      email: '',
+      password: '',
+    },
   });
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    console.log(`[LOGIN] Input changed: ${name} = ${value}`);
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    if (errors[name as keyof FormErrors]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: undefined,
-      }));
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('[LOGIN] Form submitted');
+  const onSubmit = async (data: LoginFormInputs) => {
+    console.log('[LOGIN] Form submitted:', data.email);
     setSuccessMessage('');
     setErrorMessage('');
+    setIsLoading(true);
 
-    if (validateForm()) {
-      console.log('[LOGIN] Form validation passed, sending API request...');
-      console.log('[LOGIN] Credentials:', { email: formData.email });
-      setIsLoading(true);
-      userApi
-        .login(formData.email, formData.password)
-        .then(() => {
-          console.log('[LOGIN] ✅ Login API successful');
-          setSuccessMessage('Login successful! Welcome back.');
-          setFormData({ email: '', password: '' });
-          setIsLoading(false);
-        })
-        .catch((error) => {
-          console.error('[LOGIN] ❌ Login API failed:', error.response?.data || error.message);
-          const errorMsg =
-            error.response?.data?.message || 'Login failed. Please try again.';
-          setErrorMessage(errorMsg);
-          setIsLoading(false);
-        });
-    } else {
-      console.log('[LOGIN] Form validation failed');
+    try {
+      const response = await userApi.login(data.email, data.password);
+      console.log('[LOGIN] ✅ Login successful');
+      
+      // Store user email for dashboard
+      localStorage.setItem('user_email', data.email);
+      
+      setSuccessMessage('Login successful! Redirecting...');
+      reset();
+      
+      // Redirect to dashboard after short delay
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1000);
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.message || 'Login failed. Please try again.';
+      console.error('[LOGIN] ❌ Login failed:', errorMsg);
+      setErrorMessage(errorMsg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -105,28 +77,66 @@ export const Login: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Email Address"
-              type="email"
-              placeholder="you@example.com"
-              icon={<Mail size={18} />}
-              value={formData.email}
-              onChange={handleChange}
-              error={errors.email}
-              name="email"
-            />
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
+              </label>
+              <div className="relative">
+                <div className="absolute left-3 top-3 text-gray-400">
+                  <Mail size={18} />
+                </div>
+                <input
+                  {...register('email', {
+                    required: 'Email is required',
+                    pattern: {
+                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: 'Please enter a valid email',
+                    },
+                  })}
+                  type="email"
+                  placeholder="you@example.com"
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition ${
+                    errors.email
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+              )}
+            </div>
 
-            <Input
-              label="Password"
-              type="password"
-              placeholder="Enter your password"
-              icon={<Lock size={18} />}
-              value={formData.password}
-              onChange={handleChange}
-              error={errors.password}
-              name="password"
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute left-3 top-3 text-gray-400">
+                  <Lock size={18} />
+                </div>
+                <input
+                  {...register('password', {
+                    required: 'Password is required',
+                    minLength: {
+                      value: 6,
+                      message: 'Password must be at least 6 characters',
+                    },
+                  })}
+                  type="password"
+                  placeholder="Enter your password"
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition ${
+                    errors.password
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
+                />
+              </div>
+              {errors.password && (
+                <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+              )}
+            </div>
 
             <div className="flex items-center justify-between">
               <label className="flex items-center">
@@ -152,6 +162,11 @@ export const Login: React.FC = () => {
               Sign Up
             </Link>
           </p>
+
+          <div className="mt-6 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
+            <p className="font-semibold mb-1">🔐 JWT Authentication Enabled</p>
+            <p>Access token + refresh token for secure sessions</p>
+          </div>
         </div>
       </div>
     </div>
