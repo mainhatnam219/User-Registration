@@ -41,6 +41,7 @@ apiClient.interceptors.response.use(
 
         if (!refreshToken) {
           console.log('[API] No refresh token - Redirecting to login');
+          accessToken = null;
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           window.location.href = '/login';
@@ -63,10 +64,16 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         console.log('[API] ❌ Token refresh failed - Redirecting to login');
+        accessToken = null;
         localStorage.removeItem('refresh_token');
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
+    }
+
+    // Log 404 errors
+    if (error.response?.status === 404) {
+      console.log('[API] ❌ 404 Not Found:', originalRequest.url);
     }
 
     return Promise.reject(error);

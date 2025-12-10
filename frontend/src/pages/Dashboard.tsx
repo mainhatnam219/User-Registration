@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '@/api/client';
 import { useUserProfile, useLogoutMutation } from '@/hooks';
@@ -8,22 +8,31 @@ import { LogOut } from 'lucide-react';
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   
+  // Check if user is authenticated
+  const accessToken = authApi.getAccessToken();
 
   const { data: user, isLoading: isLoadingUser, isError: isErrorUser } = useUserProfile();
   
-
   const logoutMutation = useLogoutMutation();
+
+  // Redirect to login if no token
+  useEffect(() => {
+    if (!accessToken) {
+      console.log('[DASHBOARD] No access token, redirecting to login');
+      navigate('/login', { replace: true });
+    }
+  }, [accessToken, navigate]);
 
   const handleLogout = () => {
     console.log('[DASHBOARD] Logout clicked');
     logoutMutation.mutate(undefined, {
       onSuccess: () => {
-        navigate('/login');
+        console.log('[DASHBOARD] Logout successful, redirecting to login');
+        navigate('/login', { replace: true });
       }
     });
   };
 
-  const accessToken = authApi.getAccessToken();
   const email = user?.email || localStorage.getItem('user_email') || 'User';
 
   if (isLoadingUser) {
