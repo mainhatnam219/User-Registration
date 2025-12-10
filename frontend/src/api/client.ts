@@ -96,6 +96,9 @@ export const authApi = {
   },
 };
 
+// Export getAccessToken for use in other parts (e.g., useUserProfile hook)
+export const getAccessToken = () => accessToken;
+
 export const userApi = {
   register: (email: string, password: string) => {
     console.log('[AUTH] Register attempt:', email);

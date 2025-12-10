@@ -91,4 +91,9 @@ export class UserService {
       where: { id },
     });
   }
+
+  // Alias for findById
+  async getUserById(id: string) {
+    return this.findById(id);
+  }
 }

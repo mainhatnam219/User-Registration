@@ -1,29 +1,51 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { userApi, authApi } from '@/api/client';
+import { authApi } from '@/api/client';
+import { useUserProfile, useLogoutMutation } from '@/hooks';
 import { Button } from '@/components';
 import { LogOut } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+  
 
-  const handleLogout = async () => {
+  const { data: user, isLoading: isLoadingUser, isError: isErrorUser } = useUserProfile();
+  
+
+  const logoutMutation = useLogoutMutation();
+
+  const handleLogout = () => {
     console.log('[DASHBOARD] Logout clicked');
-    setIsLoggingOut(true);
-    try {
-      await userApi.logout();
-      console.log('[DASHBOARD] Logout successful');
-      navigate('/login');
-    } catch (error) {
-      console.error('[DASHBOARD] Logout error:', error);
-    } finally {
-      setIsLoggingOut(false);
-    }
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        navigate('/login');
+      }
+    });
   };
 
   const accessToken = authApi.getAccessToken();
-  const email = localStorage.getItem('user_email') || 'User';
+  const email = user?.email || localStorage.getItem('user_email') || 'User';
+
+  if (isLoadingUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <p className="text-gray-600">Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isErrorUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Error loading profile</p>
+          <Button onClick={() => navigate('/login')}>Back to Login</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 flex items-center justify-center p-4">
@@ -61,13 +83,13 @@ export const Dashboard: React.FC = () => {
 
           <Button
             onClick={handleLogout}
-            loading={isLoggingOut}
-            disabled={isLoggingOut}
+            loading={logoutMutation.isPending}
+            disabled={logoutMutation.isPending}
             className="w-full bg-red-600 hover:bg-red-700"
           >
             <div className="flex items-center justify-center gap-2">
               <LogOut size={18} />
-              Logout
+              {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
             </div>
           </Button>
 

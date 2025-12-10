@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
+import { useMutation } from '@tanstack/react-query';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import { Button, Alert } from '@/components';
 import { userApi } from '@/api/client';
@@ -12,9 +13,6 @@ interface LoginFormInputs {
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const [successMessage, setSuccessMessage] = React.useState('');
-  const [errorMessage, setErrorMessage] = React.useState('');
-  const [isLoading, setIsLoading] = React.useState(false);
 
   const {
     register,
@@ -28,34 +26,32 @@ export const Login: React.FC = () => {
     },
   });
 
-  const onSubmit = async (data: LoginFormInputs) => {
-    console.log('[LOGIN] Form submitted:', data.email);
-    setSuccessMessage('');
-    setErrorMessage('');
-    setIsLoading(true);
-
-    try {
-      await userApi.login(data.email, data.password);
+  // useMutation for login
+  const loginMutation = useMutation({
+    mutationFn: async (data: LoginFormInputs) => {
+      console.log('[LOGIN] Form submitted:', data.email);
+      console.log('[LOGIN] Form validation passed, sending API request...');
+      console.log('[LOGIN] Credentials:', { email: data.email });
+      return await userApi.login(data.email, data.password);
+    },
+    onSuccess: (_data, variables) => {
       console.log('[LOGIN] ✅ Login successful');
-      
-      // Store user email for dashboard
-      localStorage.setItem('user_email', data.email);
-      
-      setSuccessMessage('Login successful! Redirecting...');
+      localStorage.setItem('user_email', variables.email);
       reset();
       
-      // Redirect to dashboard after short delay
+      // Redirect to dashboard
       setTimeout(() => {
         navigate('/dashboard');
       }, 1000);
-    } catch (error: any) {
-      const errorMsg =
-        error.response?.data?.message || 'Login failed. Please try again.';
+    },
+    onError: (error: any) => {
+      const errorMsg = error.response?.data?.message || 'Login failed. Please try again.';
       console.error('[LOGIN] ❌ Login failed:', errorMsg);
-      setErrorMessage(errorMsg);
-    } finally {
-      setIsLoading(false);
-    }
+    },
+  });
+
+  const onSubmit = (data: LoginFormInputs) => {
+    loginMutation.mutate(data);
   };
 
   return (
@@ -65,15 +61,18 @@ export const Login: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome Back</h1>
           <p className="text-gray-600 mb-6">Sign in to your account</p>
 
-          {successMessage && (
+          {loginMutation.isSuccess && (
             <div className="mb-4">
-              <Alert type="success" message={successMessage} />
+              <Alert type="success" message="Login successful! Redirecting..." />
             </div>
           )}
 
-          {errorMessage && (
+          {loginMutation.isError && (
             <div className="mb-4">
-              <Alert type="error" message={errorMessage} />
+              <Alert 
+                type="error" 
+                message={loginMutation.error?.response?.data?.message || 'Login failed. Please try again.'} 
+              />
             </div>
           )}
 
@@ -148,9 +147,9 @@ export const Login: React.FC = () => {
               </a>
             </div>
 
-            <Button type="submit" loading={isLoading} disabled={isLoading}>
+            <Button type="submit" loading={loginMutation.isPending} disabled={loginMutation.isPending}>
               <div className="flex items-center justify-center gap-2">
-                Sign In
+                {loginMutation.isPending ? 'Logging in...' : 'Sign In'}
                 <ArrowRight size={18} />
               </div>
             </Button>

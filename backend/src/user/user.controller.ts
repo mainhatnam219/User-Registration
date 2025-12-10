@@ -1,11 +1,15 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
   HttpCode,
   HttpStatus,
   BadRequestException,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UserService } from './user.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -46,5 +50,26 @@ export class UserController {
     }
 
     return this.authService.refreshAccessToken(refreshToken);
+  }
+
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async getProfile(@Request() req: any) {
+    const userId = req.user.sub; // JWT payload has 'sub' (subject) = userId
+    console.log('[API] Getting user profile for ID:', userId);
+    
+    const user = await this.userService.getUserById(userId);
+    
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // Return only id and email (don't expose password)
+    return {
+      id: user.id,
+      email: user.email,
+      createdAt: user.createdAt,
+    };
   }
 }
